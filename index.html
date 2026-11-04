@@ -337,6 +337,7 @@ const BOUW = [
   {n:'Lichte wand 70',k:'wall',w:2000,h:70},
   {n:'Draaideur 830',k:'door',w:830,h:100},
   {n:'Schuifdeur 830',k:'door',w:830,h:100,slide:1},
+  {n:'Doorgang 900',k:'door',w:900,h:100,open:1},
   {n:'Raam 1200',k:'window',w:1200,h:260},
   {n:'Ruimte',k:'room',w:2000,h:2000},
 ];
@@ -375,6 +376,7 @@ const BASE = [
   D('deur douche',5250,-1290,700,100,180),
   D('tuindeur slaapkamer 2',4050,-260,830,260,180),
   D('deur slaapkamer 2',3400,2900,780,100,180),
+  {...D('doorgang slaapkamer 2 / keuken',4950,1900,100,900,90),open:true},
   D('deur gang → woonkamer',3190,3150,120,830,90),
   D('deur toilet',5550,3150,100,700,270),
   D('deur slaapkamer 1',3400,4080,830,120,0),
@@ -404,7 +406,7 @@ try{store=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 const BASE_NAME='Bestaande situatie';
 if(!store||!store.v){store={cur:BASE_NAME,v:{}}}
 // BASE_VER ophogen als BASE verandert: de opgeslagen bestaande situatie wordt dan vervangen, varianten blijven
-const BASE_VER=4;let baseUpd=false;
+const BASE_VER=5;let baseUpd=false;
 if(!store.v[BASE_NAME]||store.baseVer!==BASE_VER){baseUpd=!!store.v[BASE_NAME]&&Object.keys(store.v).length>1;store.v[BASE_NAME]=clone(BASE);store.baseVer=BASE_VER;try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}
 if(!store.v[store.cur])store.cur=BASE_NAME;
 let items=store.v[store.cur];
@@ -529,7 +531,8 @@ function render(){
       const fx=o.flip?-1:1,hx=-lw/2*fx,hy=lh/2;
       if(!o.demo)s+=`<rect class="gap" x="${-lw/2}" y="${-lh/2}" width="${lw}" height="${lh}"/>`;
       s+=`<line class="ln${lc}" x1="${-lw/2}" y1="${-lh/2}" x2="${-lw/2}" y2="${lh/2}"/><line class="ln${lc}" x1="${lw/2}" y1="${-lh/2}" x2="${lw/2}" y2="${lh/2}"/>`;
-      if(o.slide)s+=`<rect class="ln${lc}" x="${-lw/2+lw*0.0}" y="${lh/2}" width="${lw}" height="40"/><path class="ln thin${lc}" d="M${-lw*.25} ${lh/2+110}H${lw*.25}M${lw*.25-60} ${lh/2+70}L${lw*.25} ${lh/2+110}L${lw*.25-60} ${lh/2+150}"/>`;
+      if(o.open){} // doorgang: alleen de opening
+      else if(o.slide)s+=`<rect class="ln${lc}" x="${-lw/2+lw*0.0}" y="${lh/2}" width="${lw}" height="40"/><path class="ln thin${lc}" d="M${-lw*.25} ${lh/2+110}H${lw*.25}M${lw*.25-60} ${lh/2+70}L${lw*.25} ${lh/2+110}L${lw*.25-60} ${lh/2+150}"/>`;
       else s+=`<line class="ln${lc}" x1="${hx}" y1="${hy}" x2="${hx}" y2="${hy+lw}"/><path class="ln thin${lc}" d="M${hx} ${hy+lw}A${lw} ${lw} 0 0 ${fx>0?0:1} ${-hx} ${hy}"/>`;
     }
     P.push(`<g data-id="${o.id}"><g transform="translate(${cx} ${cy}) rotate(${o.rot||0})">${s}</g><rect class="hit" x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}"/></g>`);
@@ -698,14 +701,14 @@ function buildLib(){
   const cm=(a,b)=>`${a/10}×${b/10}`;
   let h=`<p class="hint" style="margin:0 0 4px">Tik op een onderdeel om het toe te voegen. Maten in centimeters.</p>`;
   Object.entries(cats).forEach(([c,list])=>{h+=`<h3>${c}</h3><div class="libgrid">`+list.map(([k,t])=>`<button class="li" data-fx="${k}">${icon(fixShape({type:k},t.w,t.h),t.w,t.h)}<span class="nm">${t.n}</span><span>${cm(t.w,t.h)}</span></button>`).join('')+'</div>'});
-  const bi=b=>b.k==='wall'?`<rect class="wall new" x="-${b.w/2}" y="-60" width="${b.w}" height="120"/>`:b.k==='room'?`<rect class="roomf" x="-${b.w/2}" y="-${b.h/2}" width="${b.w}" height="${b.h}" style="stroke:var(--ink2)"/>`:`<rect class="wall" x="-${b.w/2}" y="-60" width="${b.w}" height="120"/><rect class="gap" x="-${b.w*.35}" y="-61" width="${b.w*.7}" height="122"/>`+(b.k==='door'&&!b.slide?`<path class="ln" d="M${-b.w*.35} 60V${b.w*.6}A${b.w*.7} ${b.w*.7} 0 0 0 ${b.w*.35} 60"/>`:'');
+  const bi=b=>b.k==='wall'?`<rect class="wall new" x="-${b.w/2}" y="-60" width="${b.w}" height="120"/>`:b.k==='room'?`<rect class="roomf" x="-${b.w/2}" y="-${b.h/2}" width="${b.w}" height="${b.h}" style="stroke:var(--ink2)"/>`:`<rect class="wall" x="-${b.w/2}" y="-60" width="${b.w}" height="120"/><rect class="gap" x="-${b.w*.35}" y="-61" width="${b.w*.7}" height="122"/>`+(b.k==='door'&&!b.slide&&!b.open?`<path class="ln" d="M${-b.w*.35} 60V${b.w*.6}A${b.w*.7} ${b.w*.7} 0 0 0 ${b.w*.35} 60"/>`:'');
   h+=`<h3>Bouw</h3><div class="libgrid">`+BOUW.map((b,i)=>`<button class="li" data-b="${i}">${icon(bi(b),b.w,b.k==='room'?b.h:b.w*.9)}<span class="nm">${b.n}</span><span>${cm(b.w,b.h)}</span></button>`).join('')+'</div>';
   h+=`<h3>Leidingen</h3><div class="libgrid">`+MARK.map((m,i)=>`<button class="li" data-m="${i}">${icon(`<circle class="mk ${m.m}" r="90"/>`,400,300)}<span class="nm">${m.n}</span><span></span></button>`).join('')+'</div>';
   h+=`<p class="hint" style="margin-top:14px">Op een computer: <b>R</b> draait, pijltjes schuiven een stap, Shift+pijl tien stappen, Delete verwijdert.</p>`;
   const lib=document.getElementById('lib');lib.innerHTML=h;
   lib.onclick=e=>{const b=e.target.closest('button');if(!b)return;
     if(b.dataset.fx){const t=T[b.dataset.fx];addAtCenter({kind:'fix',type:b.dataset.fx,label:t.n,w:t.w,h:t.h,rot:0})}
-    else if(b.dataset.b){const t=BOUW[+b.dataset.b];addAtCenter({kind:t.k,label:t.n,w:t.w,h:t.h,rot:0,slide:!!t.slide,bear:false})}
+    else if(b.dataset.b){const t=BOUW[+b.dataset.b];addAtCenter({kind:t.k,label:t.n,w:t.w,h:t.h,rot:0,slide:!!t.slide,open:!!t.open,bear:false})}
     else if(b.dataset.m){const t=MARK[+b.dataset.m];addAtCenter({kind:'marker',m:t.m,label:t.n,w:220,h:220})}};
 }
 document.getElementById('libBtn').onclick=()=>document.getElementById('lib').classList.toggle('open');
@@ -718,13 +721,13 @@ function panel(){
   let h=`<button class="mobhandle" id="mh">${insCollapsed?'▲ Overzicht en opties':'▼ Inklappen'}</button>`;
   if(!it){h+=overview()}
   else{
-    const kind=it.kind==='fix'?(T[it.type]?.n||'inrichting'):KIND[it.kind];
+    const kind=it.kind==='fix'?(T[it.type]?.n||'inrichting'):it.kind==='door'&&it.open?'doorgang':KIND[it.kind];
     const isW=it.kind==='wall';
     h+=`<div class="ih"><div><div class="kind">${esc(kind)}${it.nieuw?' · nieuw':''}</div><h2>${esc(it.label||kind)}</h2></div></div>
     <div class="row">`;
     // per soort alleen de knoppen die je nodig hebt
     if(it.kind==='fix'||it.kind==='door')h+=`<button class="pill" data-a="rot">Draai 90°</button>`;
-    if(it.kind==='door')h+=`<button class="pill" data-a="flip">Spiegel</button>`;
+    if(it.kind==='door'&&!it.open)h+=`<button class="pill" data-a="flip">Spiegel</button>`;
     if(isW)h+=`<button class="pill${it.demo?' on':''}" data-a="demo">${it.demo?'Niet slopen':'Slopen'}</button>`;
     if(it.kind==='door'||it.kind==='window')h+=`<button class="pill${it.demo?' on':''}" data-a="demo">${it.demo?'Weer openmaken':'Dichtzetten'}</button>`;
     if(it.kind==='fix'&&it.demo)h+=`<button class="pill on" data-a="demo">Terugzetten</button>`;
@@ -1027,7 +1030,7 @@ function build3d(){
     piece(cur,a1,0,top,mt);
   });
   // deurbladen (open zoals op de tekening)
-  ops.filter(o=>o.kind==='door'&&!o.demo).forEach(o=>{
+  ops.filter(o=>o.kind==='door'&&!o.demo&&!o.open).forEach(o=>{
     const {lw,lh}=loc(o),g=new THREE.Group(),ud={id:o.id},y1=Math.min(H3.deur-10,Hc);
     g.position.set(mm(o.x+o.w/2),0,mm(o.y+o.h/2));g.rotation.y=-(o.rot||0)*Math.PI/180;house.add(g);
     const fx_=o.flip?-1:1;
@@ -1180,7 +1183,7 @@ const CHAT_TOOLS=[
   tool('zet_maat','Geef een element een nieuwe omhullende maat in mm (w = links-rechts, h = tuin-straat). De linkerbovenhoek blijft staan.',{id:{type:'string'},w:{type:'number'},h:{type:'number'}}),
   tool('draai','Draai een element 90 graden met de klok mee, om zijn midden.',{id:{type:'string'}}),
   tool('voeg_toe','Zet een nieuw element neer. x,y is de linkerbovenhoek in mm. w,h is de omhullende maat zoals op de plattegrond; laat null voor de standaardmaat van het type (bij draai 90 of 270 worden die dan omgewisseld).',{
-    soort:{type:'string',enum:['fix','wall','door','window','room','marker']},
+    soort:{type:'string',enum:['fix','wall','door','opening','window','room','marker']},
     type:S_('Bij fix: een sleutel uit de bibliotheek. Bij marker: afvoer, water of gas. Anders null.'),
     naam:S_('Naam zoals de bewoner hem ziet, of null voor de standaardnaam.'),
     x:{type:'number'},y:{type:'number'},w:N_('Breedte in mm of null'),h:N_('Diepte in mm of null'),
@@ -1197,7 +1200,7 @@ Antwoord in het Nederlands, kort en in gewone woorden, met maten in centimeters.
 
 Coördinaten in millimeters. x loopt van links naar rechts vanaf de binnenkant van de linker zijgevel. y loopt van de tuin (boven) naar de straat (onder); y = 0 is de binnenkant van de achtergevel, de aanbouw achter heeft negatieve y. x,y,w,h is altijd de omhullende rechthoek. rot is de stand van het symbool binnen die rechthoek; de voorkant (waar je staat om het te gebruiken) wijst bij rot 0 naar +y (straat), bij 90 naar links, bij 180 naar de tuin en bij 270 naar rechts.
 
-Soorten: wall (muur; bear = dragend, demo = wordt gesloopt, nieuw = nieuw), door en window (in een muur; demo = dichtgezet), room (ruimte met naam; ruimtes met dezelfde naam zijn samen één kamer), fix (sanitair en inrichting, type uit de bibliotheek), marker (leidingpunt: afvoer, water of gas; de standleiding is de hoofdafvoer).
+Soorten: wall (muur; bear = dragend, demo = wordt gesloopt, nieuw = nieuw), door en window (in een muur; demo = dichtgezet; een door met open = doorgang zonder deur, toevoegen met soort opening), room (ruimte met naam; ruimtes met dezelfde naam zijn samen één kamer), fix (sanitair en inrichting, type uit de bibliotheek), marker (leidingpunt: afvoer, water of gas; de standleiding is de hoofdafvoer).
 
 Bibliotheek voor fix:
 ${lib}
@@ -1213,7 +1216,7 @@ function planText(){
   const r=Math.round;
   return items.map(o=>{const a={id:o.id,soort:o.kind,naam:o.label||''};if(o.type)a.type=o.type;if(o.m)a.m=o.m;
     Object.assign(a,{x:r(o.x),y:r(o.y),w:r(o.w),h:r(o.h)});if(o.rot)a.rot=o.rot;
-    ['bear','demo','nieuw','flip','slide'].forEach(k=>{if(o[k])a[k]=true});
+    ['bear','demo','nieuw','flip','slide','open'].forEach(k=>{if(o[k])a[k]=true});
     const is=issues(o);if(is.length)a.problemen=is;return JSON.stringify(a)}).join('\n');
 }
 function rotateRaw(it){it.moved=true;const cx=it.x+it.w/2,cy=it.y+it.h/2;[it.w,it.h]=[it.h,it.w];it.x=Math.round(cx-it.w/2);it.y=Math.round(cy-it.h/2);if(it.kind!=='wall'&&it.kind!=='room')it.rot=((it.rot||0)+90)%360}
@@ -1239,8 +1242,9 @@ function runTool(name,a){
     if(a.soort==='fix'){const t=T[a.type];if(!t)throw new Error(`Onbekend type "${a.type}". Kies uit: ${Object.keys(T).join(', ')}.`);
       o={kind:'fix',type:a.type,label:a.naam||t.n,w:a.w||(sw?t.h:t.w),h:a.h||(sw?t.w:t.h),rot}}
     else if(a.soort==='marker'){const m=['afvoer','water','gas'].includes(a.type)?a.type:'afvoer';o={kind:'marker',m,label:a.naam||MARK.find(x=>x.m===m).n,w:220,h:220}}
-    else{const d={wall:[2000,100,'Nieuwe wand'],door:[830,100,'Nieuwe deur'],window:[1200,260,'Nieuw raam'],room:[2000,2000,'Ruimte']}[a.soort];
-      o={kind:a.soort,label:a.naam||d[2],w:a.w||d[0],h:a.h||d[1],rot:a.soort==='door'?rot:0,bear:false}}
+    else{const d={wall:[2000,100,'Nieuwe wand'],door:[830,100,'Nieuwe deur'],opening:[900,100,'Doorgang'],window:[1200,260,'Nieuw raam'],room:[2000,2000,'Ruimte']}[a.soort];
+      const k=a.soort==='opening'?'door':a.soort;
+      o={kind:k,label:a.naam||d[2],w:a.w||d[0],h:a.h||d[1],rot:k==='door'?rot:0,bear:false};if(a.soort==='opening')o.open=true}
     Object.assign(o,{id:nid(),nieuw:true,x:Math.round(a.x),y:Math.round(a.y)});o.w=Math.round(o.w);o.h=Math.round(o.h);
     items.push(o);subject=o;
   }
