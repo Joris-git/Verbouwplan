@@ -196,7 +196,7 @@ details.pos summary{cursor:pointer;font-size:12px;color:var(--ink2)}
 .v3bar>.btn{border:1px solid var(--line);border-radius:6px}
 .v3hint{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);background:var(--ink);color:var(--sheet);font-size:12.5px;padding:6px 11px;border-radius:6px;pointer-events:none;max-width:calc(100% - 24px);text-align:center;line-height:1.4}
 .v3msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink2);text-align:center;padding:24px;font-size:14px;line-height:1.5}
-body.is3d #plan,body.is3d #legend2d,body.is3d .zoom,body.is3d #modehint,body.is3d .grp.mode,body.is3d #snap,body.is3d #tDims,body.is3d #tGhost,body.is3d #tLock{display:none!important}
+body.is3d #plan,body.is3d #legend2d,body.is3d .zoom,body.is3d #modehint,body.is3d .grp.mode,body.is3d #snap,body.is3d #tDims,body.is3d #tGhost{display:none!important}
 @media (max-width: 860px){.v3hint{bottom:56px}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
@@ -229,7 +229,6 @@ body.is3d #plan,body.is3d #legend2d,body.is3d .zoom,body.is3d #modehint,body.is3
       <button class="btn on" id="tDims" title="Afstanden tot muren tonen">Maten</button>
       <button class="btn on" id="tClr" title="Benodigde vrije ruimte voor sanitair">Vrije ruimte</button>
       <button class="btn" id="tGhost" title="Bestaande situatie als stippellijn eronder">Bestaand</button>
-      <button class="btn on" id="tLock" title="Muren kunnen niet per ongeluk verschuiven">Muren vast</button>
     </div>
     <button class="btn" id="help" title="Uitleg" aria-label="Uitleg" style="border:1px solid var(--line);border-radius:50%;width:32px;height:32px;padding:0;flex:none;font-weight:600">?</button>
   </div>
@@ -348,19 +347,16 @@ const BASE = [
   {kind:'window',label:'vouwdeuren',x:620,y:-260,w:1760,h:260,rot:0},
   {kind:'window',label:'raam woonkamer',x:400,y:9860,w:2400,h:260,rot:0},
   {kind:'window',label:'raam slaapkamer',x:4700,y:9860,w:1600,h:260,rot:0},
-  D('deur keuken → portaal',5150,-260,780,260,180),
   D('deur portaal → tuin',4930,-1150,150,830,90),
   D('deur douche',5250,-1290,700,100,180),
-  D('tuindeur slaapkamer 2',4050,-260,830,260,0,1),
+  D('tuindeur slaapkamer 2',4050,-260,830,260,180),
   D('deur slaapkamer 2',3400,2900,780,100,180),
-  D('deur keuken',5200,2900,780,100,180,1),
   D('deur gang → woonkamer',3190,3150,120,830,90),
   D('deur toilet',5550,3150,100,700,270),
   D('deur slaapkamer 1',3400,4080,830,120,0),
   D('deur hal → woonkamer',3190,7300,120,830,90,1),
   D('voordeur',3400,9860,880,260,180),
   F('douche','douchebak',5780,-2610,900,900,0),
-  F('toilet','toilet douche',5080,-2150,550,380,270),
   F('wastafel','wastafel',5130,-2610,500,400,0),
   F('wm','wasmachine portaal',6080,-1190,600,600,0),
   F('toilet2','toilet',6200,3000,380,680,0),
@@ -384,12 +380,12 @@ try{store=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 const BASE_NAME='Bestaande situatie';
 if(!store||!store.v){store={cur:BASE_NAME,v:{}}}
 // BASE_VER ophogen als BASE verandert: de opgeslagen bestaande situatie wordt dan vervangen, varianten blijven
-const BASE_VER=3;let baseUpd=false;
+const BASE_VER=4;let baseUpd=false;
 if(!store.v[BASE_NAME]||store.baseVer!==BASE_VER){baseUpd=!!store.v[BASE_NAME]&&Object.keys(store.v).length>1;store.v[BASE_NAME]=clone(BASE);store.baseVer=BASE_VER;try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}
 if(!store.v[store.cur])store.cur=BASE_NAME;
 let items=store.v[store.cur];
 let sel=null, hist=[], fut=[];
-const opts={snap:50,dims:true,clr:true,ghost:false,lock:true,mode:'sel'};
+const opts={snap:50,dims:true,clr:true,ghost:false,mode:'sel'};
 let vb={x:-800,y:-3400,w:8500,h:14200};
 const isMob=()=>window.innerWidth<=860;
 let measure=null, insCollapsed=isMob(), delArm=null;
@@ -441,8 +437,8 @@ function issues(it){
   return out;
 }
 function nearestWalls(it){
-  const r={l:null,r:null,t:null,b:null};
-  for(const w of solidWalls()){ if(w===it)continue;
+  const r={l:null,r:null,t:null,b:null},isW=it.kind==='wall',hor=it.w>=it.h;
+  for(const w of solidWalls()){ if(w===it||(isW&&(w.w>=w.h)!==hor))continue; // bij een muur: alleen evenwijdige muren
     if(w.y<it.y+it.h-1&&w.y+w.h>it.y+1){
       if(w.x+w.w<=it.x+1&&(r.l===null||w.x+w.w>r.l))r.l=w.x+w.w;
       if(w.x>=it.x+it.w-1&&(r.r===null||w.x<r.r))r.r=w.x;}
@@ -450,6 +446,7 @@ function nearestWalls(it){
       if(w.y+w.h<=it.y+1&&(r.t===null||w.y+w.h>r.t))r.t=w.y+w.h;
       if(w.y>=it.y+it.h-1&&(r.b===null||w.y<r.b))r.b=w.y;}
   }
+  if(isW){if(hor){r.l=r.r=null}else{r.t=r.b=null}} // alleen in de richting waarin de muur schuift
   return r;
 }
 function nearestDrain(it){
@@ -534,7 +531,7 @@ function render(){
       if(s.kind!=='marker'){P.push(txt(cx,s.y-12*K,`${fmt(s.w/10)} × ${fmt(s.h/10)} cm`,fs,'dimt'))}
     }
     const rs=s.kind==='room'||s.kind==='wall'||s.kind==='door'||s.kind==='window'||(s.kind==='fix'&&T[s.type]?.rs);
-    if(rs&&!(opts.lock&&s.kind==='wall')){const hs=(isMob()?9:6)*K,lin=s.kind!=='room'&&s.kind!=='fix',hor=s.w>=s.h;
+    if(rs){const hs=(isMob()?9:6)*K,lin=s.kind!=='room'&&s.kind!=='fix',hor=s.w>=s.h;
       [['n',s.x+s.w/2,s.y],['s',s.x+s.w/2,s.y+s.h],['w',s.x,s.y+s.h/2],['e',s.x+s.w,s.y+s.h/2]]
       .filter(([h])=>!lin||(hor?(h==='e'||h==='w'):(h==='n'||h==='s'))).forEach(([h,x,y])=>P.push(`<rect class="hd" data-h="${h}" x="${x-hs}" y="${y-hs}" width="${hs*2}" height="${hs*2}" style="cursor:${h==='n'||h==='s'?'ns':'ew'}-resize"/>`))}
   }
@@ -549,13 +546,40 @@ function render(){
 /* ---------- interactie ---------- */
 function toW(e){const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const q=p.matrixTransform(svg.getScreenCTM().inverse());return{x:q.x,y:q.y}}
 const sn=v=>Math.round(v/opts.snap)*opts.snap;
-function magnet(it){
+function magnet(it,skip){
   const tol=10*K;let bx=null,by=null;
-  items.forEach(o=>{if(o===it||o.kind==='room'||o.kind==='marker'||o.demo)return;
+  items.forEach(o=>{if(o===it||o.kind==='room'||o.kind==='marker'||o.demo||(skip&&skip.includes(o)))return;
     [o.x,o.x+o.w].forEach(t=>[[it.x,0],[it.x+it.w,it.w]].forEach(([e,off])=>{const d=Math.abs(e-t);if(d<tol&&(!bx||d<bx.d))bx={d,v:t-off}}));
     [o.y,o.y+o.h].forEach(t=>[[it.y,0],[it.y+it.h,it.h]].forEach(([e,off])=>{const d=Math.abs(e-t);if(d<tol&&(!by||d<by.d))by={d,v:t-off}}));
   });
   if(bx)it.x=Math.round(bx.v);if(by)it.y=Math.round(by.v);
+}
+/* muur verschuiven: een muur schuift alleen dwars op zijn richting. Muren die eraan vastzitten worden langer of korter,
+   deuren en ramen in de muur schuiven mee en de ruimtes ernaast worden groter of kleiner. */
+function wallLinks(w){
+  const hor=w.w>=w.h,tol=40,L=[];
+  const [p,pl,q,ql]=hor?['y','h','x','w']:['x','w','y','h']; // p = richting waarin de muur schuift
+  const lo=w[p]-tol,hi=w[p]+w[pl]+tol;
+  items.forEach(o=>{if(o===w||o.kind==='marker'||o.kind==='fix')return;
+    if(o.kind==='wall'&&!o.demo&&(o.w>=o.h)!==hor){
+      if(o[q]+o[ql]<w[q]-tol||o[q]>w[q]+w[ql]+tol)return;
+      const a=o[p]>=lo&&o[p]<=hi,b=o[p]+o[pl]>=lo&&o[p]+o[pl]<=hi;
+      if(a&&!b)L.push({o,e:'start'});else if(b&&!a)L.push({o,e:'end'});
+    }else if((o.kind==='door'||o.kind==='window')&&(o.w>=o.h)===hor&&ov(o,w,20))L.push({o,e:'move'});
+    else if(o.kind==='room'){
+      const over=Math.min(o[q]+o[ql],w[q]+w[ql])-Math.max(o[q],w[q]);if(over<o[ql]*.8)return;
+      if(Math.abs(o[p]+o[pl]-w[p])<60)L.push({o,e:'end'});else if(Math.abs(o[p]-(w[p]+w[pl]))<60)L.push({o,e:'start'});
+    }});
+  L.forEach(l=>{l.b={x:l.o.x,y:l.o.y,w:l.o.w,h:l.o.h};l.k=hor?['y','h']:['x','w']});
+  return L;
+}
+function clampLinks(L,d){const mn=50;
+  L.forEach(({e,b,k})=>{if(e==='start')d=Math.min(d,b[k[1]]-mn);else if(e==='end')d=Math.max(d,mn-b[k[1]])});return d}
+function applyLinks(w,L,d){
+  L.forEach(({o,e,b,k})=>{Object.assign(o,b);
+    if(e==='move')o[k[0]]=b[k[0]]+d;
+    else if(e==='start'){o[k[0]]=b[k[0]]+d;o[k[1]]=b[k[1]]-d}
+    else o[k[1]]=b[k[1]]+d});
 }
 const ptrs=new Map();let drag=null,pinch=null;
 svg.addEventListener('pointerdown',e=>{
@@ -566,8 +590,8 @@ svg.addEventListener('pointerdown',e=>{
   const h=e.target.closest('[data-h]');
   if(h&&sel){const it=byId(sel);drag={t:'rs',h:h.dataset.h,it,o:{...it},w,pushed:false};return}
   const g=e.target.closest('[data-id]');
-  if(g){const it=byId(g.dataset.id);if(sel!==it.id){sel=it.id;insCollapsed=false;panel()}
-    const locked=opts.lock&&it.kind==='wall';
+  if(g){const it=byId(g.dataset.id),was=sel===it.id;if(!was){sel=it.id;insCollapsed=false;panel()}
+    const locked=it.kind==='wall'&&!was; // muur eerst aantikken, dan slepen: zo schuif je hem niet per ongeluk
     drag={t:locked?'pan':'mv',locked,it,o:{x:it.x,y:it.y},w,c:{x:e.clientX,y:e.clientY},vb:{...vb},pushed:false};render();return}
   if(sel){sel=null;if(isMob())insCollapsed=true;panel()}
   drag={t:'pan',c:{x:e.clientX,y:e.clientY},vb:{...vb}};render();
@@ -578,14 +602,20 @@ svg.addEventListener('pointermove',e=>{
     const v=pinch.vb,m=pinch.mid;vb={x:m.x-(m.x-v.x)*f,y:m.y-(m.y-v.y)*f,w:v.w*f,h:v.h*f};render();return}
   if(!drag)return;
   if(drag.t==='pan'){if(!drag.c)return;
-    if(drag.locked&&!drag.warned&&Math.hypot(e.clientX-drag.c.x,e.clientY-drag.c.y)>8){drag.warned=true;toast('Muren staan vast. Zet “Muren vast” uit om ze te verschuiven.','Muren vrijgeven',()=>setLock(false))}
+    if(drag.locked&&!drag.warned&&Math.hypot(e.clientX-drag.c.x,e.clientY-drag.c.y)>8){drag.warned=true;toast('Tik de muur eerst aan. Daarna kun je hem slepen.')}
     vb.x=drag.vb.x-(e.clientX-drag.c.x)*K;vb.y=drag.vb.y-(e.clientY-drag.c.y)*K;render();return}
   const w=toW(e);
   if(drag.t==='meas'){measure.b={x:sn(w.x),y:sn(w.y)};render();return}
   const it=drag.it,dx=sn(w.x-drag.w.x),dy=sn(w.y-drag.w.y);
   if(!drag.pushed){if(Math.hypot(e.clientX-(drag.c?drag.c.x:e.clientX),e.clientY-(drag.c?drag.c.y:e.clientY))<3&&drag.t==='mv')return;snapshot();drag.pushed=true}
   it.moved=true;
-  if(drag.t==='mv'){it.x=drag.o.x+dx;it.y=drag.o.y+dy;if(e.altKey!==true)magnet(it)}
+  if(drag.t==='mv'&&it.kind==='wall'){
+    if(!drag.links)drag.links=wallLinks(it);
+    const hor=it.w>=it.h;drag.links.forEach(l=>Object.assign(l.o,l.b));it.x=drag.o.x;it.y=drag.o.y;
+    if(hor)it.y+=dy;else it.x+=dx;
+    if(e.altKey!==true){magnet(it,drag.links.map(l=>l.o));if(hor)it.x=drag.o.x;else it.y=drag.o.y}
+    const d=clampLinks(drag.links,hor?it.y-drag.o.y:it.x-drag.o.x);it.x=drag.o.x+(hor?0:d);it.y=drag.o.y+(hor?d:0);applyLinks(it,drag.links,d)}
+  else if(drag.t==='mv'){it.x=drag.o.x+dx;it.y=drag.o.y+dy;if(e.altKey!==true)magnet(it)}
   else{const o=drag.o,mn=50;
     if(drag.h==='e')it.w=Math.max(mn,o.w+dx);
     if(drag.h==='s')it.h=Math.max(mn,o.h+dy);
@@ -612,7 +642,6 @@ function ensureVisible(it){
   const sx=(it.x+it.w/2-vb.x)/K+ox,sy=(it.y+it.h/2-vb.y)/K+oy,maxY=bh*0.5;
   if(sy>maxY||sy<40||sx<30||sx>bw-30){vb.x+=(sx-bw/2)*K;vb.y+=(sy-bh*0.3)*K;render()}
 }
-function setLock(v){opts.lock=v;document.getElementById('tLock').classList.toggle('on',v);render();panel()}
 function rotate(it){snapshot();it.moved=true;const cx=it.x+it.w/2,cy=it.y+it.h/2;[it.w,it.h]=[it.h,it.w];it.x=Math.round(cx-it.w/2);it.y=Math.round(cy-it.h/2);if(it.kind!=='wall'&&it.kind!=='room')it.rot=((it.rot||0)+90)%360;commit()}
 function dup(it){snapshot();const c={...clone(it),id:nid(),x:it.x+300,y:it.y+300,nieuw:true};items.push(c);sel=c.id;commit()}
 function del(it){snapshot();items=items.filter(o=>o!==it);sel=null;if(isMob())insCollapsed=true;commit();toast(`${it.label||'Element'} verwijderd.`,'Ongedaan maken',undo)}
@@ -632,7 +661,10 @@ window.addEventListener('keydown',e=>{
   if(e.key==='r'||e.key==='R'){rotate(it);return}
   if(e.key==='Escape'){sel=null;commit();return}
   const st=e.shiftKey?opts.snap*10:opts.snap,mv={ArrowLeft:[-st,0],ArrowRight:[st,0],ArrowUp:[0,-st],ArrowDown:[0,st]}[e.key];
-  if(mv){e.preventDefault();if(opts.lock&&it.kind==='wall')return;snapshot();it.x+=mv[0];it.y+=mv[1];commit()}
+  if(mv){e.preventDefault();snapshot();
+    if(it.kind==='wall'){const hor=it.w>=it.h,L=wallLinks(it),d=clampLinks(L,hor?mv[1]:mv[0]);if(hor)it.y+=d;else it.x+=d;applyLinks(it,L,d)}
+    else{it.x+=mv[0];it.y+=mv[1]}
+    it.moved=true;commit()}
 });
 
 /* ---------- bibliotheek-paneel ---------- */
@@ -666,20 +698,24 @@ function panel(){
     const isW=it.kind==='wall';
     h+=`<div class="ih"><div><div class="kind">${esc(kind)}${it.nieuw?' · nieuw':''}</div><h2>${esc(it.label||kind)}</h2></div></div>
     <div class="row">`;
-    if(it.kind!=='marker')h+=`<button class="pill" data-a="rot">Draai 90°</button>`;
+    // per soort alleen de knoppen die je nodig hebt
+    if(it.kind==='fix'||it.kind==='door')h+=`<button class="pill" data-a="rot">Draai 90°</button>`;
     if(it.kind==='door')h+=`<button class="pill" data-a="flip">Spiegel</button>`;
-    if(isW)h+=`<button class="pill${it.bear?' on':''}" data-a="bear">Dragend</button>`;
-    if(it.kind!=='room'&&it.kind!=='marker')h+=`<button class="pill${it.demo?' on':''}" data-a="demo">${it.kind==='door'||it.kind==='window'?'Dichtzetten':'Slopen'}</button>`;
-    h+=`<button class="pill" data-a="dup">Dupliceer</button><button class="pill danger" data-a="del">Verwijder</button></div>`;
-    if(isW&&opts.lock)h+=`<div class="callout"><b>Muren staan vast</b>Zo schuif je ze niet per ongeluk mee. Slopen kan wel. Wil je deze wand verplaatsen of inkorten? <div class="row"><button class="pill primary" data-a="unlock">Muren vrijgeven</button></div></div>`;
+    if(isW)h+=`<button class="pill${it.demo?' on':''}" data-a="demo">${it.demo?'Niet slopen':'Slopen'}</button>`;
+    if(it.kind==='door'||it.kind==='window')h+=`<button class="pill${it.demo?' on':''}" data-a="demo">${it.demo?'Weer openmaken':'Dichtzetten'}</button>`;
+    if(it.kind==='fix'&&it.demo)h+=`<button class="pill on" data-a="demo">Terugzetten</button>`;
+    if(it.kind==='fix')h+=`<button class="pill" data-a="dup">Nog een</button>`;
+    h+=`<button class="pill danger" data-a="del">Verwijder</button></div>`;
+    if(isW&&!it.demo)h+=`<p class="hint" style="margin-top:8px">Sleep de muur om hem te verschuiven. Muren die eraan vastzitten schuiven mee, en de kamers ernaast worden groter of kleiner. Met de blokjes aan de uiteinden maak je hem langer of korter.</p>`;
     h+=`<div class="facts" id="facts">${facts(it)}</div>`;
-    h+=`<details class="pos"><summary>Naam en exacte maten aanpassen</summary><div class="fields">
+    h+=`<details class="pos"><summary>${isW?'Meer: naam, exacte maten en dragend':'Naam en exacte maten aanpassen'}</summary><div class="fields">
       <div class="f full"><label for="p-label">Naam</label><input id="p-label" value="${esc(it.label||'')}"></div>
       ${it.kind!=='marker'?`<div class="f"><label for="p-w">Breedte (mm)</label><input id="p-w" type="number" step="${opts.snap}" min="20" value="${Math.round(it.w)}"></div>
       <div class="f"><label for="p-h">Diepte (mm)</label><input id="p-h" type="number" step="${opts.snap}" min="20" value="${Math.round(it.h)}"></div>`:''}
       <div class="f"><label for="p-x">Positie links → rechts</label><input id="p-x" type="number" step="${opts.snap}" value="${Math.round(it.x)}"></div>
       <div class="f"><label for="p-y">Positie tuin → straat</label><input id="p-y" type="number" step="${opts.snap}" value="${Math.round(it.y)}"></div>
-    </div><p class="hint">Posities in mm, gemeten vanaf de binnenkant van de linkermuur en de achtergevel.</p></details>`;
+    </div><p class="hint">Posities in mm, gemeten vanaf de binnenkant van de linkermuur en de achtergevel.</p>
+    ${isW?`<div class="row"><button class="pill${it.bear?' on':''}" data-a="bear">${it.bear?'Dragende muur':'Geen dragende muur'}</button><button class="pill" data-a="rot">Draai 90°</button></div>`:''}</details>`;
     if(isW&&it.bear&&it.demo)h+=`<div class="warn">Dragende wand slopen vraagt om een constructieberekening en meestal een vergunning.</div>`;
   }
   P.innerHTML=h;
@@ -689,7 +725,7 @@ function panel(){
   num('p-x','x');num('p-y','y');num('p-w','w');num('p-h','h');
   const lb=document.getElementById('p-label');lb.onchange=()=>{snapshot();it.label=lb.value;commit()};
   P.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{const a=b.dataset.a;
-    if(a==='rot')return rotate(it); if(a==='dup')return dup(it); if(a==='del')return del(it); if(a==='unlock')return setLock(false);
+    if(a==='rot')return rotate(it); if(a==='dup')return dup(it); if(a==='del')return del(it);
     snapshot();if(a==='flip')it.flip=!it.flip;if(a==='bear')it.bear=!it.bear;if(a==='demo')it.demo=!it.demo;commit()});
 }
 function facts(it){
@@ -736,7 +772,6 @@ function overview(){
     <button class="pill${opts.dims?' on':''}" data-o="dims">Maten</button>
     <button class="pill${opts.clr?' on':''}" data-o="clr">Vrije ruimte</button>
     <button class="pill${opts.ghost?' on':''}" data-o="ghost">Oude situatie eronder</button>
-    <button class="pill${opts.lock?' on':''}" data-o="lock">Muren vast</button>
     <button class="pill${opts.mode==='meas'?' on':''}" data-o="meas">Meetlint</button></div>
     <h3>Legenda</h3><p class="hint">Gearceerd = dragende muur · grijs = binnenmuur · rood = nieuw · rode stippel = slopen · blauwe stippelzone = vrije ruimte voor sanitair · bruine stip = afvoer</p></div>`;
   h+=`<h3>Ruimtes</h3><div class="facts">`+rooms.filter(roomMain).map(r=>`<div class="fact"><span>${esc(r.label)}</span><b>${(roomArea(r)/1e6).toLocaleString('nl-NL',{maximumFractionDigits:1})} m²</b></div>`).join('')+`</div>
@@ -759,7 +794,6 @@ function wireOverview(){
     delete store.v[store.cur];delArm=null;store.cur=BASE_NAME;items=store.v[BASE_NAME];hist=[];fut=[];fillVariants();commit()});
   P.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{const k=b.dataset.o;
     if(k==='meas'){setMode(opts.mode==='meas'?'sel':'meas');if(isMob()){insCollapsed=true}panel();return}
-    if(k==='lock')return setLock(!opts.lock);
     opts[k]=!opts[k];const map={dims:'tDims',clr:'tClr',ghost:'tGhost'};document.getElementById(map[k]).classList.toggle('on',opts[k]);render();panel()});
   on('cp',async()=>{const txt=JSON.stringify({naam:store.cur,items});const msg=document.getElementById('impMsg');
     try{await navigator.clipboard.writeText(txt);msg.textContent='Gekopieerd. Plak de tekst in een bericht of notitie.'}catch(e){const t=document.getElementById('imp');t.value=txt;t.select();msg.textContent='De tekst staat geselecteerd in het vak. Kopieer hem met Ctrl/Cmd+C.'}});
@@ -776,7 +810,7 @@ document.getElementById('newVar').onclick=()=>{save();const n=nextName();store.v
 document.getElementById('undo').onclick=undo;document.getElementById('redo').onclick=redo;
 document.getElementById('snap').onchange=e=>{opts.snap=+e.target.value;panel()};
 const tog=(id,key)=>{const b=document.getElementById(id);b.onclick=()=>{opts[key]=!opts[key];b.classList.toggle('on',opts[key]);render();panel()}};
-tog('tDims','dims');tog('tClr','clr');tog('tGhost','ghost');tog('tLock','lock');
+tog('tDims','dims');tog('tClr','clr');tog('tGhost','ghost');
 const setMode=m=>{opts.mode=m;document.getElementById('mSel').classList.toggle('on',m==='sel');document.getElementById('mMeas').classList.toggle('on',m==='meas');document.getElementById('modehint').hidden=m!=='meas';if(m==='sel'){measure=null;render()}};
 document.getElementById('mSel').onclick=()=>setMode('sel');document.getElementById('mMeas').onclick=()=>setMode('meas');
 
@@ -796,8 +830,8 @@ const ILL={
 const STEPS=[
  {t:'Speel met de indeling van je huis',b:`<p>Dit is de begane grond op schaal. Bovenin is de <b>tuin</b>, onderin de <b>straat</b>.</p><p>Je kunt toilet, douche, wastafel en muren verschuiven en zien of alles past. Niets gaat stuk: elke stap is terug te draaien met <b>↶</b>.</p>`},
  {t:'Tik en sleep',b:ILL.move+`<ul><li>Tik op iets om het te kiezen. Sleep om het te verplaatsen.</li><li>Het klikt vanzelf vast tegen een muur.</li><li>De rode getallen zijn de afstand tot de muren, in centimeters.</li><li>Lege plek slepen schuift de tekening. Knijp of scroll om te zoomen.</li></ul>`},
- {t:'Toevoegen, draaien, weghalen',b:`<ul><li>Via <b>+ Toevoegen</b> (op een computer: de lijst links) zet je een nieuw toilet, douche, bad of muur neer.</li><li>Gekozen element? Onderin of rechts staan <b>Draai 90°</b>, <b>Dupliceer</b> en <b>Verwijder</b>.</li><li>Een douchebak of aanrecht maak je groter met de rode blokjes aan de rand.</li></ul>`},
- {t:'Muren slopen of bijbouwen',b:ILL.walls+`<p>Muren staan vast, zodat je ze niet per ongeluk meesleept. Tik op een muur en kies <b>Slopen</b>, of <b>Muren vrijgeven</b> om hem te verschuiven.</p><p>${sw('background:repeating-linear-gradient(45deg,var(--ink) 0 1.5px,transparent 1.5px 4px)')}Gearceerde muren zijn dragend. Daar heb je een constructeur voor nodig.</p>`},
+ {t:'Toevoegen, draaien, weghalen',b:`<ul><li>Via <b>+ Toevoegen</b> (op een computer: de lijst links) zet je een nieuw toilet, douche, bad of muur neer.</li><li>Gekozen element? Onderin of rechts staan de knoppen, zoals <b>Draai 90°</b> en <b>Verwijder</b>.</li><li>Een douchebak of aanrecht maak je groter met de rode blokjes aan de rand.</li></ul>`},
+ {t:'Muren slopen of bijbouwen',b:ILL.walls+`<p>Tik een muur eerst aan en sleep hem dan. Zo schuif je hem niet per ongeluk mee. Muren die eraan vastzitten schuiven mee, en de kamers worden groter of kleiner. Weg met de muur? Kies <b>Slopen</b>.</p><p>${sw('background:repeating-linear-gradient(45deg,var(--ink) 0 1.5px,transparent 1.5px 4px)')}Gearceerde muren zijn dragend. Daar heb je een constructeur voor nodig.</p>`},
  {t:'Past het?',b:`<p>${sw('background:var(--water-soft);border:1px dashed var(--water)')}De blauwe zone voor sanitair is de ruimte die je nodig hebt om het te gebruiken, zoals 60 cm voor een toilet. Wordt hij <b style="color:var(--accent)">rood</b>, dan staat het te krap.</p><p>${sw('background:#7A5A2F;border-radius:50%;border:0')}De bruine stip rechts is de <b>standleiding</b>, de hoofdafvoer. Zet je een toilet ver daarvandaan, dan moet de afvoer met afschot onder de vloer door. Bij een toilet zie je de afstand.</p>`},
  {t:'Varianten vergelijken',b:`<p>De huidige situatie blijft altijd bewaard. Bij je eerste wijziging maakt de app zelf <b>Variant 1</b> aan. Wissel bovenaan tussen varianten, of maak een kopie om een tweede idee uit te werken.</p><p>Tik op een lege plek voor het overzicht: wat er gesloopt en bijgebouwd wordt, en de m² per ruimte. Varianten blijven in deze browser staan.</p><p>Met <b>3D</b> bovenin zie je je variant als maquette. Kies <b>Rondkijken</b> en tik op de vloer om in een kamer te staan.</p>`},
 ];
