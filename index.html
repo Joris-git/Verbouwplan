@@ -334,7 +334,7 @@ const BASE = [
   R('woonkamer',0,3000,3190,6860), R('woonkamer achter',0,0,2680,3000),
   R('kamer 2',2780,0,2170,2900), R('keuken',5050,0,1780,2900),
   R('gang',3310,3000,2240,1080), R('toilet',5650,3000,1180,1080),
-  R('gang',3310,4080,1000,2850), R('hal',3310,7030,1000,2830),
+  R('gang',3310,4080,1000,1050), R('slaapkamer 1 – nis',3310,5230,1100,1700), R('hal',3310,7030,1000,2830),
   R('slaapkamer 1',4410,4200,2420,5660),
   R('portaal',5080,-1190,1600,930), R('douche',5080,-2610,1600,1320),
   W('zijgevel links',-110,-260,110,10380,1), W('zijgevel rechts',6830,-260,110,10380,1),
@@ -342,7 +342,8 @@ const BASE = [
   W('wand kamer 2',2680,0,100,3000), W('wand kamer 2 / keuken – gang',2680,2900,4150,100),
   W('wand kamer 2 / keuken',4950,0,100,2900), W('wand woonkamer / hal',3190,3000,120,6860),
   W('wand toilet',5550,3000,100,1080), W('wand gang / slaapkamer',4310,4080,2520,120),
-  W('wand hal / slaapkamer',4310,4200,100,5660), W('wand hal',3310,6930,1000,100),
+  W('wand gang / slaapkamer',4310,4200,100,1030), W('wand eind gang',3310,5130,1000,100),
+  W('wand hal / slaapkamer',4310,6930,100,2930), W('wand hal',3310,6930,1000,100),
   W('aanbouw links',4930,-2760,150,2500), W('aanbouw rechts',6680,-2760,150,2500),
   W('HSB-wand achter',5080,-2760,1600,150), W('wand portaal / douche',5080,-1290,1600,100),
   {kind:'window',label:'vouwdeuren',x:620,y:-260,w:1760,h:260,rot:0},
@@ -356,7 +357,6 @@ const BASE = [
   D('deur gang → woonkamer',3190,3150,120,830,90),
   D('deur toilet',5550,3150,100,700,270),
   D('deur slaapkamer',4310,4300,100,830,270,1),
-  D('deur hal → gang',3400,6930,830,100,0),
   D('deur hal → woonkamer',3190,7300,120,830,90,1),
   D('voordeur',3400,9860,880,260,180),
   F('douche','douchebak',5780,-2610,900,900,0),
@@ -384,7 +384,9 @@ let store;
 try{store=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 const BASE_NAME='Bestaande situatie';
 if(!store||!store.v){store={cur:BASE_NAME,v:{}}}
-if(!store.v[BASE_NAME])store.v[BASE_NAME]=clone(BASE);
+// BASE_VER ophogen als BASE verandert: de opgeslagen bestaande situatie wordt dan vervangen, varianten blijven
+const BASE_VER=2;let baseUpd=false;
+if(!store.v[BASE_NAME]||store.baseVer!==BASE_VER){baseUpd=!!store.v[BASE_NAME]&&Object.keys(store.v).length>1;store.v[BASE_NAME]=clone(BASE);store.baseVer=BASE_VER;try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}
 if(!store.v[store.cur])store.cur=BASE_NAME;
 let items=store.v[store.cur];
 let sel=null, hist=[], fut=[];
@@ -905,7 +907,7 @@ function textPlane(lines,cx,cz,maxW){
   c.width=Math.ceil(w+8);c.height=Math.ceil(lh.reduce((a,b)=>a+b,0)+8);
   let y=4;lines.forEach((l,i)=>{x.font=fnt(l);x.fillStyle=l.c;x.textAlign='center';x.textBaseline='top';x.fillText(l.t,c.width/2,y+l.s*px*.1);y+=lh[i]});
   const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;
-  let W=c.width/px,H=c.height/px;if(maxW&&W>maxW){const k=maxW/W;W*=k;H*=k}
+  let W=c.width/px,H=c.height/px;if(maxW&&W>maxW){const k=maxW/W;if(k<.6){tex.dispose();return null}W*=k;H*=k}
   const m=new THREE.Mesh(new THREE.PlaneGeometry(mm(W),mm(H)),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false}));
   m.rotation.x=-Math.PI/2;m.position.set(mm(cx),.004,mm(cz));m.renderOrder=2;m.userData={skip:true,own:true};house.add(m);
   return {m,w:W,h:H};
@@ -932,7 +934,7 @@ function build3d(){
     box(o.x,o.y,o.w,o.h,-30,0,mat(k),{id:o.id,floor:1});
     const a=(o.w*o.h/1e6).toLocaleString('nl-NL',{maximumFractionDigits:1});
     if(v3.eye){const c=box(o.x,o.y,o.w,o.h,H3.plafond,H3.plafond+20,mat('ceil'),{skip:1});c.castShadow=false;return} // plafond bij rondkijken
-    const t=textPlane([{t:l,s:230,b:1,c:lab},{t:a+' m²',s:170,c:lab}],0,0,o.w*.85);t.m.material.opacity=.75;
+    const t=textPlane([{t:l,s:230,b:1,c:lab},{t:a+' m²',s:170,c:lab}],0,0,o.w*.85);if(!t)return;t.m.material.opacity=.75;
     const cx=o.x+o.w/2,cy=o.y+o.h/2;let best=[cx,cy];
     search:for(const y of [cy,o.y+o.h*.72,o.y+o.h*.28])for(const x of [cx,o.x+t.w/2+150,o.x+o.w-t.w/2-150]){
       if(!fx.some(f=>ov(f,{x:x-t.w/2,y:y-t.h/2,w:t.w,h:t.h},1))){best=[x,y];break search}}
@@ -1104,7 +1106,7 @@ window.addEventListener('keydown',e=>{if(v3.on&&e.key==='Escape'&&(v3.eye||v3.wa
 /* ---------- start ---------- */
 buildLib();fillVariants();
 new ResizeObserver(()=>render()).observe(svg);
-requestAnimationFrame(()=>{fit();panel();let seen=null;try{seen=localStorage.getItem('verbouwplan-intro')}catch(e){}if(!seen)openIntro(0)});
+requestAnimationFrame(()=>{fit();panel();if(baseUpd)toast('De bestaande situatie is bijgewerkt: de gang stopt bij de slaapkamer en de hal heeft alleen een deur naar de woonkamer. Je eigen varianten zijn niet veranderd.');let seen=null;try{seen=localStorage.getItem('verbouwplan-intro')}catch(e){}if(!seen)openIntro(0)});
 </script>
 </body>
 </html>

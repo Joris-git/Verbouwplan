@@ -18,7 +18,7 @@ Interactieve plattegrond waarin de bewoner zelf verbouwvarianten uitprobeert (ba
   - `fix`: sanitair en inrichting. `type` verwijst naar de bibliotheek `T`. `moved` geeft aan dat de gebruiker het element heeft verplaatst.
   - `marker`: leidingpunt, met `m` als `afvoer`, `water` of `gas`.
 - `x,y,w,h` is altijd de omhullende rechthoek. `rot` bepaalt alleen hoe het symbool daarbinnen staat. De voorkant van een symbool is lokaal `+y`.
-- `BASE` is de bestaande situatie, overgenomen van bouwtekening P36N uit 1997.
+- `BASE` is de bestaande situatie, overgenomen van bouwtekening P36N uit 1997. Correcties van de bewoner gaan voor de tekening, bijvoorbeeld: de smalle gang stopt na de slaapkamerdeur, het stuk daarachter is een nis van slaapkamer 1, en de hal heeft alleen een deur naar de woonkamer. **Verander je `BASE`, verhoog dan `BASE_VER`.** Anders blijft de oude bestaande situatie uit `localStorage` staan. Eigen varianten worden niet aangepast.
 - `T[type].cl` is de benodigde vrije ruimte vóór het element. `T[type].rs` geeft aan dat het element van maat mag wisselen (dan verschijnen er grijpblokjes).
 
 ## Gedrag dat bewust zo is
