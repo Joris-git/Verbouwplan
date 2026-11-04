@@ -829,7 +829,7 @@ function load3d(){
     R3.shadowMap.enabled=true;R3.shadowMap.type=THREE.PCFSoftShadowMap;
     S3=new THREE.Scene();
     C3=new THREE.PerspectiveCamera(40,1,0.1,200);
-    O3=new OrbitControls(C3,cv);O3.enableDamping=true;O3.dampingFactor=.12;O3.screenSpacePanning=false;
+    O3=new OrbitControls(C3,cv);O3.enableDamping=true;O3.dampingFactor=.12;O3.screenSpacePanning=false;O3.zoomToCursor=true;
     S3.add(new THREE.HemisphereLight(0xffffff,0x8d8576,1.5));AMB=new THREE.AmbientLight(0xffffff,0);S3.add(AMB);
     eyeCtl(false);
     const sun=new THREE.DirectionalLight(0xffffff,2.1);
@@ -842,7 +842,7 @@ function load3d(){
     let down=null;
     cv.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,t:performance.now()}});
     cv.addEventListener('pointerup',e=>{if(down&&Math.hypot(e.clientX-down.x,e.clientY-down.y)<7&&performance.now()-down.t<600)pick3d(e);down=null});
-    cv.addEventListener('pointerdown',()=>{if(tween)tween=null});
+    cv.addEventListener('pointerdown',e=>{if(tween)tween=null;O3.zoomSpeed=e.pointerType==='touch'?2:1.3}); // knijpen gaat sneller dan 1:1
     matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{clearMats();v3.dirty=true});
   })();
   v3.loading.catch(()=>{v3.loading=null});
