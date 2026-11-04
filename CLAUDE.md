@@ -4,8 +4,8 @@ Interactieve plattegrond waarin de bewoner zelf verbouwvarianten uitprobeert (ba
 
 ## Opbouw
 
-- Alles staat in **één bestand: `index.html`** (HTML, CSS en vanilla JS, geen build, geen libraries). Houd dat zo.
-- Alleen Google Fonts (IBM Plex Sans Condensed, IBM Plex Mono) worden extern geladen.
+- Alles staat in **één bestand: `index.html`** (HTML, CSS en vanilla JS, geen build). Houd dat zo.
+- Extern geladen: Google Fonts (IBM Plex Sans Condensed, IBM Plex Mono) en **Three.js 0.160.0** van jsdelivr (via de importmap in `<head>`). Three.js wordt pas geladen als de gebruiker op 3D tikt; de 2D-tekening werkt zonder. Voeg geen andere libraries toe zonder overleg.
 - `README.md` is de gebruikersinstructie. Werk die bij als de bediening verandert.
 
 ## Datamodel
@@ -28,6 +28,7 @@ Interactieve plattegrond waarin de bewoner zelf verbouwvarianten uitprobeert (ba
 - **Muren staan standaard vast** (`opts.lock`). Slepen aan een muur toont een melding met de knop "Muren vrijgeven".
 - **Opslag:** varianten staan in `localStorage` onder de sleutel `verbouwplan-v1`. Uitleg gezien: `verbouwplan-intro`. Delen gaat via "Kopieer variant als tekst" (JSON).
 - **Maten:** de gebruiker ziet **centimeters**; intern wordt in mm gerekend. Alleen de velden onder "exacte maten" tonen mm.
+- **3D-maquette** (knop 2D / 3D in de werkbalk) wordt elke keer opnieuw opgebouwd uit `items` (`build3d()`, aangeroepen via `v3.dirty` aan het eind van `render()`). Verschuiven gebeurt alleen in 2D; in 3D kun je elementen wel aantikken om ze te kiezen. Hoogtes staan in `H3` (plafond 2600, deur 2100, borstwering 900). Deuren en ramen snijden een opening in de muur waarmee ze overlappen. Een `window` met "deur" of "pui" in de naam loopt door tot de vloer. Kleuren in 3D komen uit de `--v3-*`-variabelen op `:root`. Standaard staan de muren op lage stand (`v3.low`). Bij **Rondkijken** zijn ze vol hoog, met plafond, en krijgen nieuwe muren de gewone muurkleur.
 - **Uitleg** staat in `STEPS` (6 stappen) en opent bij het eerste bezoek en via de knop `?`.
 
 ## Taal en stijl
@@ -38,7 +39,7 @@ Interactieve plattegrond waarin de bewoner zelf verbouwvarianten uitprobeert (ba
 
 ## Testen
 
-Headless met Playwright en Chrome (`/usr/bin/google-chrome`): maak screenshots op 1400×860 en 390×780 (met touch), doorloop de uitleg, versleep een toilet, voeg een bad toe. Controleer of er geen JS-fouten zijn (`pageerror`).
+Headless met Playwright en Chrome (`/usr/bin/google-chrome`): maak screenshots op 1400×860 en 390×780 (met touch), doorloop de uitleg, versleep een toilet, voeg een bad toe. Controleer of er geen JS-fouten zijn (`pageerror`). Test ook 3D: klik op 3D, probeer elke kijkrichting, Muren laag en Rondkijken. Is jsdelivr niet bereikbaar, haal Three.js dan op met `npm pack three@0.160.0` en stuur de jsdelivr-verzoeken met `context.route` naar die lokale kopie. Start Chromium headless met `--use-gl=angle --use-angle=swiftshader` zodat WebGL werkt.
 
 ## Let op
 
