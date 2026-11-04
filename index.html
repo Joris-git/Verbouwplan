@@ -376,7 +376,7 @@ const BASE = [
   D('deur douche',5250,-1290,700,100,180),
   D('tuindeur slaapkamer 2',4050,-260,830,260,180),
   D('deur slaapkamer 2',3400,2900,780,100,180),
-  {...D('doorgang slaapkamer 2 / keuken',4950,1900,100,900,90),open:true},
+  {...D('doorgang gang → keuken',5050,2900,500,100,180),open:true},
   D('deur gang → woonkamer',3190,3150,120,830,90),
   D('deur toilet',5550,3150,100,700,270),
   D('deur slaapkamer 1',3400,4080,830,120,0),
@@ -406,7 +406,7 @@ try{store=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 const BASE_NAME='Bestaande situatie';
 if(!store||!store.v){store={cur:BASE_NAME,v:{}}}
 // BASE_VER ophogen als BASE verandert: de opgeslagen bestaande situatie wordt dan vervangen, varianten blijven
-const BASE_VER=5;let baseUpd=false;
+const BASE_VER=6;let baseUpd=false;
 if(!store.v[BASE_NAME]||store.baseVer!==BASE_VER){baseUpd=!!store.v[BASE_NAME]&&Object.keys(store.v).length>1;store.v[BASE_NAME]=clone(BASE);store.baseVer=BASE_VER;try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}
 if(!store.v[store.cur])store.cur=BASE_NAME;
 let items=store.v[store.cur];
