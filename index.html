@@ -198,6 +198,24 @@ details.pos summary{cursor:pointer;font-size:12px;color:var(--ink2)}
 .v3msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink2);text-align:center;padding:24px;font-size:14px;line-height:1.5}
 body.is3d #plan,body.is3d #legend2d,body.is3d .zoom,body.is3d #modehint,body.is3d .grp.mode,body.is3d #snap,body.is3d #tDims,body.is3d #tGhost{display:none!important}
 @media (max-width: 860px){.v3hint{bottom:56px}}
+/* chat */
+.chat{position:absolute;right:max(10px,env(safe-area-inset-right,0px));bottom:10px;width:min(380px,calc(100% - 20px));height:min(500px,calc(100% - 70px));background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);display:flex;flex-direction:column;z-index:6;overflow:hidden}
+.chathead{display:flex;align-items:center;gap:4px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.chathead b{flex:1;font-size:14px}
+.chathead button{border:0;background:transparent;font-size:12.5px;color:var(--ink2);padding:4px 6px;border-radius:4px}
+.chathead button:hover{background:var(--room)}
+.chatlog{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+.chatlog .callout{margin-top:0}
+.chatlog a{color:var(--water)}
+.msg{max-width:88%;padding:7px 10px;border-radius:10px;font-size:13.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.me{align-self:flex-end;background:var(--ink);color:var(--sheet)}
+.msg.ai{align-self:flex-start;background:var(--room)}
+.msg.act{align-self:flex-start;color:var(--ink2);font-size:12px;padding:0 4px}
+.msg.err{align-self:flex-start;background:var(--accent-soft)}
+.chatform{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line);align-items:flex-end}
+.chatform textarea{flex:1;min-height:42px;max-height:120px;font-family:var(--font-ui);font-size:14px;resize:none}
+body.chatopen .toast{top:calc(62px + env(safe-area-inset-top,0px));bottom:auto}
+@media (max-width: 860px){.chat{position:fixed;left:0;right:0;bottom:0;width:auto;height:60%;border-radius:12px 12px 0 0;padding-bottom:env(safe-area-inset-bottom,0px);z-index:35}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
@@ -206,6 +224,7 @@ body.is3d #plan,body.is3d #legend2d,body.is3d .zoom,body.is3d #modehint,body.is3
   <div class="bar">
     <button class="btn onlymob" id="libBtn">+ Toevoegen</button>
     <div class="brand">Verbouwplan<small>begane grond · maten in cm</small></div>
+    <button class="btn" id="chatBtn" title="Vertel wat je wilt veranderen" style="border:1px solid var(--line)">Chat</button>
     <select class="sel" id="variant" aria-label="Variant"></select>
     <button class="btn" id="newVar" title="Kopie van huidige variant maken">+ Variant</button>
     <div class="grp" role="group" aria-label="Weergave">
@@ -259,6 +278,11 @@ body.is3d #plan,body.is3d #legend2d,body.is3d .zoom,body.is3d #modehint,body.is3
         <button id="zfit" aria-label="Passend maken">⤢</button>
       </div>
       <div class="modehint" id="modehint" hidden>Sleep over de tekening om te meten</div>
+      <div class="chat" id="chat" hidden role="dialog" aria-label="Chat met Claude">
+        <div class="chathead"><b>Chat</b><button id="chatNew">Nieuw gesprek</button><button id="chatForget" hidden>Sleutel wissen</button><button id="chatClose" aria-label="Chat sluiten" style="font-size:18px;line-height:1">×</button></div>
+        <div class="chatlog" id="chatLog" aria-live="polite"></div>
+        <form class="chatform" id="chatForm" hidden><textarea id="chatIn" rows="2" placeholder="Bijvoorbeeld: zet het toilet 50 cm naar links" aria-label="Wat wil je veranderen?"></textarea><button class="pill primary" type="submit">Stuur</button></form>
+      </div>
       <div class="v3" id="v3" hidden>
         <canvas id="v3c" aria-label="3D-maquette van de begane grond"></canvas>
         <div class="v3bar">
@@ -642,7 +666,7 @@ function ensureVisible(it){
   const sx=(it.x+it.w/2-vb.x)/K+ox,sy=(it.y+it.h/2-vb.y)/K+oy,maxY=bh*0.5;
   if(sy>maxY||sy<40||sx<30||sx>bw-30){vb.x+=(sx-bw/2)*K;vb.y+=(sy-bh*0.3)*K;render()}
 }
-function rotate(it){snapshot();it.moved=true;const cx=it.x+it.w/2,cy=it.y+it.h/2;[it.w,it.h]=[it.h,it.w];it.x=Math.round(cx-it.w/2);it.y=Math.round(cy-it.h/2);if(it.kind!=='wall'&&it.kind!=='room')it.rot=((it.rot||0)+90)%360;commit()}
+function rotate(it){snapshot();rotateRaw(it);commit()}
 function dup(it){snapshot();const c={...clone(it),id:nid(),x:it.x+300,y:it.y+300,nieuw:true};items.push(c);sel=c.id;commit()}
 function del(it){snapshot();items=items.filter(o=>o!==it);sel=null;if(isMob())insCollapsed=true;commit();toast(`${it.label||'Element'} verwijderd.`,'Ongedaan maken',undo)}
 function addAtCenter(o){snapshot();o.id=nid();o.nieuw=true;const cy=vb.y+vb.h*(isMob()?0.3:0.5),cx=vb.x+vb.w/2,blk=items.filter(i=>(i.kind==='wall'||i.kind==='fix')&&!i.demo);
@@ -830,7 +854,7 @@ const ILL={
 const STEPS=[
  {t:'Speel met de indeling van je huis',b:`<p>Dit is de begane grond op schaal. Bovenin is de <b>tuin</b>, onderin de <b>straat</b>.</p><p>Je kunt toilet, douche, wastafel en muren verschuiven en zien of alles past. Niets gaat stuk: elke stap is terug te draaien met <b>↶</b>.</p>`},
  {t:'Tik en sleep',b:ILL.move+`<ul><li>Tik op iets om het te kiezen. Sleep om het te verplaatsen.</li><li>Het klikt vanzelf vast tegen een muur.</li><li>De rode getallen zijn de afstand tot de muren, in centimeters.</li><li>Lege plek slepen schuift de tekening. Knijp of scroll om te zoomen.</li></ul>`},
- {t:'Toevoegen, draaien, weghalen',b:`<ul><li>Via <b>+ Toevoegen</b> (op een computer: de lijst links) zet je een nieuw toilet, douche, bad of muur neer.</li><li>Gekozen element? Onderin of rechts staan de knoppen, zoals <b>Draai 90°</b> en <b>Verwijder</b>.</li><li>Een douchebak of aanrecht maak je groter met de rode blokjes aan de rand.</li></ul>`},
+ {t:'Toevoegen, draaien, weghalen',b:`<ul><li>Via <b>+ Toevoegen</b> (op een computer: de lijst links) zet je een nieuw toilet, douche, bad of muur neer.</li><li>Gekozen element? Onderin of rechts staan de knoppen, zoals <b>Draai 90°</b> en <b>Verwijder</b>.</li><li>Liever vertellen wat je wilt? Tik op <b>Chat</b>.</li><li>Een douchebak of aanrecht maak je groter met de rode blokjes aan de rand.</li></ul>`},
  {t:'Muren slopen of bijbouwen',b:ILL.walls+`<p>Tik een muur eerst aan en sleep hem dan. Zo schuif je hem niet per ongeluk mee. Muren die eraan vastzitten schuiven mee, en de kamers worden groter of kleiner. Weg met de muur? Kies <b>Slopen</b>.</p><p>${sw('background:repeating-linear-gradient(45deg,var(--ink) 0 1.5px,transparent 1.5px 4px)')}Gearceerde muren zijn dragend. Daar heb je een constructeur voor nodig.</p>`},
  {t:'Past het?',b:`<p>${sw('background:var(--water-soft);border:1px dashed var(--water)')}De blauwe zone voor sanitair is de ruimte die je nodig hebt om het te gebruiken, zoals 60 cm voor een toilet. Wordt hij <b style="color:var(--accent)">rood</b>, dan staat het te krap.</p><p>${sw('background:#7A5A2F;border-radius:50%;border:0')}De bruine stip rechts is de <b>standleiding</b>, de hoofdafvoer. Zet je een toilet ver daarvandaan, dan moet de afvoer met afschot onder de vloer door. Bij een toilet zie je de afstand.</p>`},
  {t:'Varianten vergelijken',b:`<p>De huidige situatie blijft altijd bewaard. Bij je eerste wijziging maakt de app zelf <b>Variant 1</b> aan. Wissel bovenaan tussen varianten, of maak een kopie om een tweede idee uit te werken.</p><p>Tik op een lege plek voor het overzicht: wat er gesloopt en bijgebouwd wordt, en de m² per ruimte. Varianten blijven in deze browser staan.</p><p>Met <b>3D</b> bovenin zie je je variant als maquette. Kies <b>Rondkijken</b> en tik op de vloer om in een kamer te staan.</p>`},
@@ -1141,6 +1165,155 @@ document.getElementById('v3eye').onclick=()=>{
 document.getElementById('v3low').onclick=()=>{v3.low=!v3.low;v3.dirty=true;bar3d()};
 document.getElementById('v3ghost').onclick=()=>{v3.ghost=!v3.ghost;v3.dirty=true;bar3d()};
 window.addEventListener('keydown',e=>{if(v3.on&&e.key==='Escape'&&(v3.eye||v3.wait))preset('schuin')});
+
+/* ---------- chat: vertel wat je wilt, Claude past de variant aan ----------
+   Rechtstreeks vanuit de browser naar de Claude API, met de eigen API-sleutel van de gebruiker (alleen in localStorage).
+   Claude krijgt de tekening als tekst en antwoordt met tool-aanroepen; die voeren we hier uit. Eén opdracht = één stap terug met ↶. */
+const CHAT_KEY='verbouwplan-sleutel',CHAT_MODEL='claude-opus-5-5';
+const chat={msgs:[],busy:false,open:false};
+const getKey=()=>{try{return localStorage.getItem(CHAT_KEY)||''}catch(e){return ''}};
+const S_=t=>({type:['string','null'],description:t}),N_=t=>({type:['number','null'],description:t});
+const tool=(name,description,props)=>({name,description,strict:true,input_schema:{type:'object',properties:props,required:Object.keys(props),additionalProperties:false}});
+const CHAT_TOOLS=[
+  tool('verplaats','Verschuif een element over dx en dy millimeter (positief = naar rechts / naar de straat). Een muur schuift alleen dwars op zijn richting; muren die eraan vastzitten, deuren en ramen erin en kamers ernaast passen zich vanzelf aan.',{id:{type:'string'},dx:{type:'number'},dy:{type:'number'}}),
+  tool('zet_plek','Zet een element op een exacte plek: x,y is de linkerbovenhoek van de omhullende rechthoek, in mm. Voor muren geldt hetzelfde als bij verplaats.',{id:{type:'string'},x:{type:'number'},y:{type:'number'}}),
+  tool('zet_maat','Geef een element een nieuwe omhullende maat in mm (w = links-rechts, h = tuin-straat). De linkerbovenhoek blijft staan.',{id:{type:'string'},w:{type:'number'},h:{type:'number'}}),
+  tool('draai','Draai een element 90 graden met de klok mee, om zijn midden.',{id:{type:'string'}}),
+  tool('voeg_toe','Zet een nieuw element neer. x,y is de linkerbovenhoek in mm. w,h is de omhullende maat zoals op de plattegrond; laat null voor de standaardmaat van het type (bij draai 90 of 270 worden die dan omgewisseld).',{
+    soort:{type:'string',enum:['fix','wall','door','window','room','marker']},
+    type:S_('Bij fix: een sleutel uit de bibliotheek. Bij marker: afvoer, water of gas. Anders null.'),
+    naam:S_('Naam zoals de bewoner hem ziet, of null voor de standaardnaam.'),
+    x:{type:'number'},y:{type:'number'},w:N_('Breedte in mm of null'),h:N_('Diepte in mm of null'),
+    draai:{type:['integer','null'],description:'Stand van het symbool: 0, 90, 180 of 270 (of null voor 0). De voorkant wijst bij 0 naar de straat.'}}),
+  tool('verwijder','Haal een element helemaal weg (bijvoorbeeld iets wat je net hebt toegevoegd).',{id:{type:'string'}}),
+  tool('sloop','Markeer een bestaande muur als slopen, of een deur of raam als dichtzetten (slopen=true). Met slopen=false maak je dat ongedaan. Gebruik dit voor bestaande muren in plaats van verwijder, zodat zichtbaar blijft wat er weg gaat.',{id:{type:'string'},slopen:{type:'boolean'}}),
+  tool('hernoem','Geef een element een andere naam.',{id:{type:'string'},naam:{type:'string'}}),
+];
+function chatSystem(){
+  const lib=Object.entries(T).map(([k,t])=>`- ${k}: ${t.n}, ${t.w}×${t.h} mm${t.cl?`, vrije ruimte ervoor ${t.cl} mm`:''}${t.rs?', maat mag veranderen':''}`).join('\n');
+  return `Je helpt een bewoner zonder bouwkennis om de indeling van de begane grond van een huis aan te passen in een plattegrond-app. Je ziet de tekening als lijst elementen en past hem aan met de tools.
+
+Antwoord in het Nederlands, kort en in gewone woorden, met maten in centimeters. Gebruik geen opmaak zoals sterretjes of kopjes. Vertel na het aanpassen in één of twee zinnen wat je hebt gedaan, en noem problemen die overblijven.
+
+Coördinaten in millimeters. x loopt van links naar rechts vanaf de binnenkant van de linker zijgevel. y loopt van de tuin (boven) naar de straat (onder); y = 0 is de binnenkant van de achtergevel, de aanbouw achter heeft negatieve y. x,y,w,h is altijd de omhullende rechthoek. rot is de stand van het symbool binnen die rechthoek; de voorkant (waar je staat om het te gebruiken) wijst bij rot 0 naar +y (straat), bij 90 naar links, bij 180 naar de tuin en bij 270 naar rechts.
+
+Soorten: wall (muur; bear = dragend, demo = wordt gesloopt, nieuw = nieuw), door en window (in een muur; demo = dichtgezet), room (ruimte met naam; ruimtes met dezelfde naam zijn samen één kamer), fix (sanitair en inrichting, type uit de bibliotheek), marker (leidingpunt: afvoer, water of gas; de standleiding is de hoofdafvoer).
+
+Bibliotheek voor fix:
+${lib}
+
+Werkwijze:
+- Bestaande muren sloop je met sloop, niet met verwijder. Nieuwe binnenmuren zijn 100 mm dik (lichte wand 70 mm) en lopen van muur tot muur.
+- Zet sanitair met de achterkant tegen een muur en laat de vrije ruimte ervoor vrij. Na elke wijziging meldt de tool problemen (in een muur, te krap); los die op als dat kan.
+- Een toilet hoort dicht bij een afvoer. Een dragende muur slopen kan alleen met een constructeur; zeg dat erbij.
+- Is de vraag onduidelijk, of moet je kiezen tussen heel verschillende oplossingen, stel dan eerst één korte vraag en verander nog niets.
+- Wijzigingen komen vanzelf in een variant; de bestaande situatie blijft bewaard en de bewoner kan alles terugdraaien.`;
+}
+function planText(){
+  const r=Math.round;
+  return items.map(o=>{const a={id:o.id,soort:o.kind,naam:o.label||''};if(o.type)a.type=o.type;if(o.m)a.m=o.m;
+    Object.assign(a,{x:r(o.x),y:r(o.y),w:r(o.w),h:r(o.h)});if(o.rot)a.rot=o.rot;
+    ['bear','demo','nieuw','flip','slide'].forEach(k=>{if(o[k])a[k]=true});
+    const is=issues(o);if(is.length)a.problemen=is;return JSON.stringify(a)}).join('\n');
+}
+function rotateRaw(it){it.moved=true;const cx=it.x+it.w/2,cy=it.y+it.h/2;[it.w,it.h]=[it.h,it.w];it.x=Math.round(cx-it.w/2);it.y=Math.round(cy-it.h/2);if(it.kind!=='wall'&&it.kind!=='room')it.rot=((it.rot||0)+90)%360}
+function moveItem(it,dx,dy){
+  if(it.kind==='wall'){const hor=it.w>=it.h,L=wallLinks(it),d=clampLinks(L,Math.round(hor?dy:dx));if(hor)it.y+=d;else it.x+=d;applyLinks(it,L,d);
+    return (hor?dx:dy)?' Een muur schuift alleen dwars op zijn richting; de andere richting is genegeerd.':''}
+  it.x=Math.round(it.x+dx);it.y=Math.round(it.y+dy);it.moved=true;return '';
+}
+const VERB={verplaats:'verschoven',zet_plek:'verplaatst',zet_maat:'andere maat',draai:'gedraaid',voeg_toe:'toegevoegd',verwijder:'weggehaald',sloop:'',hernoem:'hernoemd'};
+function runTool(name,a){
+  const it=a.id!=null?byId(a.id):null;
+  if('id' in a&&!it)throw new Error(`Er is geen element met id ${a.id}.`);
+  let extra='',subject=it;
+  if(name==='verplaats')extra=moveItem(it,a.dx,a.dy);
+  else if(name==='zet_plek')extra=moveItem(it,a.x-it.x,a.y-it.y);
+  else if(name==='zet_maat'){if(!(a.w>=20&&a.h>=20))throw new Error('Breedte en diepte moeten minstens 20 mm zijn.');it.w=Math.round(a.w);it.h=Math.round(a.h);it.moved=true}
+  else if(name==='draai')rotateRaw(it);
+  else if(name==='verwijder'){items=items.filter(o=>o!==it);if(sel===it.id)sel=null;return {txt:`${it.label||'Element'} is weggehaald.`,line:`${it.label||'Element'} weggehaald`}}
+  else if(name==='sloop'){if(!['wall','door','window','fix'].includes(it.kind))throw new Error('Alleen muren, deuren, ramen en inrichting kun je slopen.');it.demo=!!a.slopen}
+  else if(name==='hernoem')it.label=String(a.naam||'').slice(0,60);
+  else if(name==='voeg_toe'){
+    const rot=[0,90,180,270].includes(a.draai)?a.draai:0,sw=rot%180!==0;let o;
+    if(a.soort==='fix'){const t=T[a.type];if(!t)throw new Error(`Onbekend type "${a.type}". Kies uit: ${Object.keys(T).join(', ')}.`);
+      o={kind:'fix',type:a.type,label:a.naam||t.n,w:a.w||(sw?t.h:t.w),h:a.h||(sw?t.w:t.h),rot}}
+    else if(a.soort==='marker'){const m=['afvoer','water','gas'].includes(a.type)?a.type:'afvoer';o={kind:'marker',m,label:a.naam||MARK.find(x=>x.m===m).n,w:220,h:220}}
+    else{const d={wall:[2000,100,'Nieuwe wand'],door:[830,100,'Nieuwe deur'],window:[1200,260,'Nieuw raam'],room:[2000,2000,'Ruimte']}[a.soort];
+      o={kind:a.soort,label:a.naam||d[2],w:a.w||d[0],h:a.h||d[1],rot:a.soort==='door'?rot:0,bear:false}}
+    Object.assign(o,{id:nid(),nieuw:true,x:Math.round(a.x),y:Math.round(a.y)});o.w=Math.round(o.w);o.h=Math.round(o.h);
+    items.push(o);subject=o;
+  }
+  const s=subject,is=issues(s);
+  const line=name==='sloop'?`${s.label} ${a.slopen?(s.kind==='wall'?'wordt gesloopt':'wordt dichtgezet'):'blijft staan'}`:`${s.label||'Element'} ${VERB[name]}`;
+  return {txt:`Gedaan. ${s.label} (id ${s.id}) staat nu op x=${Math.round(s.x)}, y=${Math.round(s.y)}, w=${Math.round(s.w)}, h=${Math.round(s.h)}${s.rot?`, rot=${s.rot}`:''}.${extra}${is.length?' Problemen: '+is.join(' '):''}`,line,warn:is.length>0};
+}
+async function callClaude(){
+  const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{
+      'content-type':'application/json','x-api-key':getKey(),'anthropic-version':'2026-10-21',
+      'anthropic-beta':'server-side-fallback-2026-07-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:CHAT_MODEL,max_tokens:16000,fallbacks:'default',output_config:{effort:'medium'},
+      cache_control:{type:'ephemeral'},system:chatSystem(),tools:CHAT_TOOLS,messages:chat.msgs})});
+  if(!res.ok){let m='';try{m=(await res.json()).error?.message||''}catch(e){}
+    const e=new Error(res.status===401?'De API-sleutel klopt niet. Controleer hem of maak een nieuwe.':res.status===429||res.status===529||res.status>=500?'Claude is even erg druk. Probeer het over een minuut opnieuw.':res.status===400&&/credit|balance/i.test(m)?'Je tegoed bij Anthropic is op. Vul het aan in de console.':`Er ging iets mis (${res.status}). ${m}`);
+    e.status=res.status;throw e}
+  return res.json();
+}
+async function chatSend(text){
+  if(chat.busy||!text.trim())return;chat.busy=true;chatAdd('me',text);
+  const wait=chatAdd('act','Claude denkt na…');
+  chat.msgs.push({role:'user',content:[{type:'text',text:`<plattegrond variant="${store.cur}">\n${planText()}\n</plattegrond>\n\n${text}`}]});
+  let changed=false;
+  try{
+    for(let round=0;round<8;round++){
+      const r=await callClaude();
+      chat.msgs.push({role:'assistant',content:r.content});
+      if(r.stop_reason==='refusal'){chatAdd('err','Dit verzoek kan Claude niet uitvoeren. Probeer het anders te zeggen.');break}
+      r.content.filter(b=>b.type==='text'&&b.text.trim()).forEach(b=>chatAdd('ai',b.text.trim()));
+      const uses=r.content.filter(b=>b.type==='tool_use');
+      if(r.stop_reason!=='tool_use'||!uses.length){if(r.stop_reason==='max_tokens')chatAdd('err','Het antwoord werd te lang en is afgebroken.');break}
+      if(!changed){snapshot();changed=true}
+      const results=uses.map(u=>{try{const o=runTool(u.name,u.input||{});chatAdd('act',(o.warn?'⚠ ':'✓ ')+o.line);return {type:'tool_result',tool_use_id:u.id,content:o.txt}}
+        catch(e){return {type:'tool_result',tool_use_id:u.id,content:e.message,is_error:true}}});
+      chat.msgs.push({role:'user',content:results});
+      commit();
+    }
+  }catch(e){
+    // het verzoek is niet gelukt: haal de laatste vraag weg zodat het gesprek klopt
+    while(chat.msgs.length&&!(chat.msgs[chat.msgs.length-1].role==='user'&&chat.msgs[chat.msgs.length-1].content.some(b=>b.type==='text')))chat.msgs.pop();
+    chat.msgs.pop();const msg=e.message&&e.status?e.message:'Geen verbinding met Claude. Controleer je internet en probeer het opnieuw.';
+    if(e.status===401)chatSetup(msg);else chatAdd('err',msg);
+  }
+  wait.remove();chat.busy=false;if(changed){chatAdd('act','Niet goed? Tik op ↶ om deze opdracht terug te draaien.')}
+  document.getElementById('chatIn').focus();
+}
+function chatAdd(cls,text){const log=document.getElementById('chatLog'),d=document.createElement('div');d.className='msg '+cls;d.textContent=text;log.appendChild(d);log.scrollTop=log.scrollHeight;return d}
+function chatSetup(err){
+  document.getElementById('chatForm').hidden=true;document.getElementById('chatForget').hidden=true;
+  document.getElementById('chatLog').innerHTML=`<div class="callout"><b>Vertel wat je wilt</b>Bijvoorbeeld “zet het toilet 50 cm naar links” of “maak de douche 20 cm breder”. Claude past de tekening aan in een variant. Met ↶ draai je het terug.</div>
+  <p class="hint">Hiervoor heb je een eigen API-sleutel van Anthropic nodig. Die staat los van een Claude-abonnement. Maak er een op <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> en zet er wat tegoed op. Een opdracht kost meestal 5 tot 20 cent. De sleutel blijft alleen in deze browser. Je tekening gaat naar Anthropic om je vraag te beantwoorden, zonder adres.</p>
+  <div class="fields"><div class="f full"><label for="chatKey">API-sleutel</label><input id="chatKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…"></div></div>
+  <div class="row"><button class="pill primary" id="chatKeySave">Bewaren en beginnen</button></div><p class="hint" id="chatKeyMsg"></p>
+  <p class="hint"><b>Geen sleutel?</b> Kies in het overzicht “Kopieer variant als tekst”, plak die in een gewone Claude-chat met je vraag, en plak het antwoord terug in het vak “Openen als nieuwe variant”.</p>`;
+  document.getElementById('chatKeySave').onclick=()=>{const k=document.getElementById('chatKey').value.trim();
+    if(!/^sk-ant-/.test(k)){document.getElementById('chatKeyMsg').textContent='Een sleutel begint met sk-ant-. Kopieer hem helemaal.';return}
+    try{localStorage.setItem(CHAT_KEY,k)}catch(e){}chatStart()};
+  if(err){const m=document.getElementById('chatKeyMsg');m.textContent=err;m.style.color='var(--accent)'}
+}
+function chatStart(){
+  document.getElementById('chatForm').hidden=false;document.getElementById('chatForget').hidden=false;
+  document.getElementById('chatLog').innerHTML='';chat.msgs=[];
+  chatAdd('ai','Wat wil je veranderen? Bijvoorbeeld: “Zet het toilet 50 cm naar links”, “Zet een ligbad in slaapkamer 2” of “Sloop de muur tussen keuken en slaapkamer 2”.');
+  setTimeout(()=>document.getElementById('chatIn').focus(),30);
+}
+function chatToggle(open){chat.open=open??!chat.open;document.getElementById('chat').hidden=!chat.open;document.getElementById('chatBtn').classList.toggle('on',chat.open);document.body.classList.toggle('chatopen',chat.open);
+  if(chat.open){if(!getKey())chatSetup();else if(!document.getElementById('chatLog').children.length)chatStart();else document.getElementById('chatIn').focus()}}
+document.getElementById('chatBtn').onclick=()=>chatToggle();
+document.getElementById('chatClose').onclick=()=>chatToggle(false);
+document.getElementById('chatNew').onclick=()=>{if(chat.busy)return;getKey()?chatStart():chatSetup()};
+document.getElementById('chatForget').onclick=()=>{try{localStorage.removeItem(CHAT_KEY)}catch(e){}chat.msgs=[];chatSetup()};
+document.getElementById('chatForm').onsubmit=e=>{e.preventDefault();const t=document.getElementById('chatIn');const v=t.value;t.value='';chatSend(v)};
+document.getElementById('chatIn').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();document.getElementById('chatForm').requestSubmit()}});
 
 /* ---------- start ---------- */
 buildLib();fillVariants();
