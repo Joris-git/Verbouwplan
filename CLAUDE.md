@@ -14,11 +14,11 @@ Interactieve plattegrond waarin de bewoner zelf verbouwvarianten uitprobeert (ba
 - Elk element is een object in `items` met `kind`:
   - `wall`: kent de vlaggen `bear` (dragend), `demo` (slopen) en `nieuw`.
   - `door` / `window`: `rot` in stappen van 90°, `flip` en `slide`.
-  - `room`: bepaalt het oppervlak en de label.
+  - `room`: bepaalt het oppervlak en de label. Ruimtes met **dezelfde naam** tellen als één ruimte (L-vorm): het oppervlak wordt opgeteld en de naam staat alleen op het grootste deel (`roomParts`, `roomArea`, `roomMain`).
   - `fix`: sanitair en inrichting. `type` verwijst naar de bibliotheek `T`. `moved` geeft aan dat de gebruiker het element heeft verplaatst.
   - `marker`: leidingpunt, met `m` als `afvoer`, `water` of `gas`.
 - `x,y,w,h` is altijd de omhullende rechthoek. `rot` bepaalt alleen hoe het symbool daarbinnen staat. De voorkant van een symbool is lokaal `+y`.
-- `BASE` is de bestaande situatie, overgenomen van bouwtekening P36N uit 1997. Correcties van de bewoner gaan voor de tekening, bijvoorbeeld: de smalle gang stopt na de slaapkamerdeur, het stuk daarachter is een nis van slaapkamer 1, en de hal heeft alleen een deur naar de woonkamer. **Verander je `BASE`, verhoog dan `BASE_VER`.** Anders blijft de oude bestaande situatie uit `localStorage` staan. Eigen varianten worden niet aangepast.
+- `BASE` is de bestaande situatie, overgenomen van bouwtekening P36N uit 1997. Correcties van de bewoner gaan voor de tekening. Zo heeft de hal alleen een deur naar de woonkamer, kom je vanuit de gang via één deur direct in de L-vormige slaapkamer 1 (er is geen tweede gangetje), heeft slaapkamer 2 rechtsachter een tuindeur en staat daar geen koelkast. **Verander je `BASE`, verhoog dan `BASE_VER`.** Anders blijft de oude bestaande situatie uit `localStorage` staan. Eigen varianten worden niet aangepast.
 - `T[type].cl` is de benodigde vrije ruimte vóór het element. `T[type].rs` geeft aan dat het element van maat mag wisselen (dan verschijnen er grijpblokjes).
 
 ## Gedrag dat bewust zo is
